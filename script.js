@@ -1,0 +1,1 @@
+function clock(){const e=document.getElementById("clock");if(e)e.textContent=new Intl.DateTimeFormat("id-ID",{hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false,timeZone:"Asia/Makassar"}).format(new Date())+" WITA"}clock();setInterval(clock,1000);

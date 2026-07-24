@@ -1,0 +1,1 @@
+INFOSCIE IS-HF/IS-HS V3.0\nUpload seluruh isi folder ke root repository. Versi ini adalah shell visual; gabungkan section riset lengkap Anda ke <main> bila diperlukan.
