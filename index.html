@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#02070d">
+<title>LOGOS GRAPHOS — IS-HF/IS-HS V3.0</title>
+<style>
+  /* ============================================================
+     GLOBAL RESET & DARK THEME
+     ============================================================ */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #02070d;
+    color: #e0e8f0;
+    font-family: 'Segoe UI', 'PingFang SC', Roboto, sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    user-select: none;
+  }
+
+  /* ============================================================
+     THREE.JS CANVAS (Globe 3D) — fullscreen di belakang
+     ============================================================ */
+  #globe-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 0;
+    pointer-events: none;
+  }
+  #globe-container canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* ============================================================
+     LAPISAN UI (di atas globe)
+     ============================================================ */
+  .ui-layer {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    padding: 18px 28px;
+    pointer-events: none;
+  }
+  .ui-layer * {
+    pointer-events: auto;
+  }
+
+  /* ===== TOPBAR ===== */
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(0, 180, 255, 0.08);
+  }
+  .identity {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .identity img {
+    height: 40px;
+    filter: drop-shadow(0 0 12px rgba(0, 180, 255, 0.3));
+  }
+  .identity strong {
+    font-size: 18px;
+    font-weight: 600;
+    background: linear-gradient(90deg, #ffffff, #80d4ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .identity small {
+    display: block;
+    font-size: 10px;
+    font-weight: 300;
+    color: #5a7a90;
+    letter-spacing: 1px;
+    -webkit-text-fill-color: #5a7a90;
+  }
+  .clockbox {
+    text-align: right;
+  }
+  .clockbox span {
+    font-size: 26px;
+    font-weight: 300;
+    font-variant-numeric: tabular-nums;
+    color: #b0d4ff;
+    text-shadow: 0 0 20px rgba(0, 180, 255, 0.15);
+  }
+  .clockbox small {
+    display: block;
+    font-size: 10px;
+    color: #4a6a80;
+    letter-spacing: 2px;
+  }
+
+  /* ===== STAGE ===== */
+  .stage {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+  }
+
+  /* Status badge */
+  .system-title {
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  .status {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 500;
+    color: #00ff88;
+    letter-spacing: 2px;
+    border: 1px solid rgba(0, 255, 136, 0.2);
+    padding: 4px 18px;
+    border-radius: 30px;
+    background: rgba(0, 255, 136, 0.04);
+    backdrop-filter: blur(4px);
+  }
+  .status i {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: #00ff88;
+    border-radius: 50%;
+    margin-right: 8px;
+    animation: pulse-dot 1.8s ease-in-out infinite;
+  }
+  @keyframes pulse-dot {
+    0% { opacity: 0.3; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.2); }
+    100% { opacity: 0.3; transform: scale(0.8); }
+  }
+
+  .system-title h1 {
+    font-size: 48px;
+    font-weight: 300;
+    letter-spacing: 8px;
+    margin: 6px 0 0;
+    text-shadow: 0 0 60px rgba(0, 180, 255, 0.1);
+  }
+  .system-title h1 span {
+    font-weight: 700;
+    background: linear-gradient(90deg, #00d4ff, #0088cc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .system-title p {
+    font-size: 14px;
+    color: #4a6a80;
+    letter-spacing: 4px;
+    margin-top: 2px;
+  }
+
+  /* ===== TELEMETRY ===== */
+  .telemetry {
+    display: flex;
+    gap: 48px;
+    margin-top: 10px;
+    background: rgba(2, 7, 13, 0.55);
+    backdrop-filter: blur(8px);
+    padding: 12px 36px;
+    border-radius: 40px;
+    border: 1px solid rgba(0, 180, 255, 0.06);
+  }
+  .telemetry div {
+    text-align: center;
+  }
+  .telemetry span {
+    display: block;
+    font-size: 10px;
+    color: #4a6a80;
+    letter-spacing: 2px;
+  }
+  .telemetry b {
+    font-size: 22px;
+    font-weight: 600;
+    color: #b0d4ff;
+    display: block;
+    margin-top: 2px;
+  }
+
+  /* ===== TIME GRID ===== */
+  .time-grid {
+    display: flex;
+    gap: 40px;
+    background: rgba(2, 7, 13, 0.4);
+    backdrop-filter: blur(6px);
+    padding: 10px 30px;
+    border-radius: 30px;
+    border: 1px solid rgba(0, 180, 255, 0.04);
+    margin-top: 8px;
+  }
+  .time-grid div {
+    text-align: center;
+  }
+  .time-grid small {
+    display: block;
+    font-size: 9px;
+    color: #3a5a70;
+    letter-spacing: 1px;
+  }
+  .time-grid strong {
+    font-size: 14px;
+    font-weight: 500;
+    color: #c0d8f0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ===== FOOTER ===== */
+  footer {
+    display: flex;
+    justify-content: space-between;
+    flex-shrink: 0;
+    font-size: 10px;
+    color: #2a4a60;
+    letter-spacing: 2px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255,255,255,0.02);
+    margin-top: auto;
+  }
+
+  @media (max-width: 768px) {
+    .topbar { flex-wrap: wrap; gap: 8px; }
+    .system-title h1 { font-size: 30px; letter-spacing: 4px; }
+    .telemetry { gap: 20px; padding: 10px 20px; flex-wrap: wrap; justify-content: center; }
+    .time-grid { gap: 16px; flex-wrap: wrap; justify-content: center; }
+    .clockbox span { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     GLOBE 3D (Three.js)
+     ============================================================ -->
+<div id="globe-container"></div>
+
+<!-- ============================================================
+     UI LAYER (teks, telemetry, dll)
+     ============================================================ -->
+<div class="ui-layer">
+  <header class="topbar">
+    <div class="identity">
+      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='none' stroke='%2300d4ff' stroke-width='2'/%3E%3Cpath d='M50 10 L90 50 L50 90 L10 50 Z' fill='none' stroke='%2300d4ff' stroke-width='1.5' opacity='0.5'/%3E%3Ccircle cx='50' cy='50' r='10' fill='%2300d4ff' opacity='0.2'/%3E%3C/svg%3E" alt="LOGOS GRAPHOS">
+      <div>
+        <strong>LOGOS GRAPHOS</strong>
+        <small>SUPER ALGORITHM · IS-HF/IS-HS V3.0</small>
+      </div>
+    </div>
+    <div class="clockbox">
+      <span id="localClock">--:--:--</span>
+      <small id="zoneLabel">LOCAL TIME</small>
+    </div>
+  </header>
+
+  <main class="stage">
+    <section class="system-title">
+      <span class="status"><i></i> TEMPORAL CORE ACTIVE</span>
+      <h1>LOGOS <span>GRAPHOS</span></h1>
+      <p>IS-HF / IS-HS V3.0</p>
+    </section>
+
+    <section class="telemetry">
+      <div><span>SENSE</span><b id="sense">98.7%</b></div>
+      <div><span>THINK</span><b id="think">97.9%</b></div>
+      <div><span>SYNC</span><b id="sync">99.2%</b></div>
+    </section>
+
+    <section class="time-grid">
+      <div><small>UTC HEARTBEAT</small><strong id="utcClock">--:--:-- UTC</strong></div>
+      <div><small>UNIX EPOCH</small><strong id="epoch">0</strong></div>
+      <div><small>TEMPORAL PHASE</small><strong id="phase">0.000°</strong></div>
+      <div><small>FRAME STATE</small><strong id="frameState">SYNC</strong></div>
+    </section>
+  </main>
+
+  <footer>
+    <span>SCIE ECOSYSTEM</span>
+    <span>ONE TIME · MANY TIME ZONES · ONE CONTINUOUS PHASE</span>
+    <span>IS-HF/IS-HS V3.0</span>
+  </footer>
+</div>
+
+<!-- ============================================================
+     THREE.JS + GLOBE + ENGINE CORE
+     ============================================================ -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+
+// --- 1. Setup Scene, Camera, Renderer ---
+const container = document.getElementById('globe-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x02070d);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 0.8, 3.5);
+camera.lookAt(0, 0, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+container.appendChild(renderer.domElement);
+
+// --- 2. Controls ---
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.8;
+controls.enableZoom = true;
+controls.zoomSpeed = 0.5;
+controls.enablePan = false;
+controls.rotateSpeed = 0.3;
+controls.target.set(0, 0, 0);
+controls.update();
+
+// --- 3. Lighting ---
+const ambient = new THREE.AmbientLight(0x404066, 0.6);
+scene.add(ambient);
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.8);
+dirLight.position.set(2, 3, 4);
+scene.add(dirLight);
+
+const backLight = new THREE.DirectionalLight(0x4488ff, 0.6);
+backLight.position.set(-2, -1, -3);
+scene.add(backLight);
+
+const rimLight = new THREE.DirectionalLight(0x00ccff, 0.4);
+rimLight.position.set(0, -2, 2);
+scene.add(rimLight);
+
+// --- 4. Bola Dunia (Globe) ---
+const globeRadius = 1.0;
+const geometry = new THREE.SphereGeometry(globeRadius, 64, 64);
+
+const textureLoader = new THREE.TextureLoader();
+const earthTexture = textureLoader.load('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg');
+const specularTexture = textureLoader.load('https://threejs.org/examples/textures/planets/earth_specular_2048.jpg');
+const cloudTexture = textureLoader.load('https://threejs.org/examples/textures/planets/earth_clouds_1024.png');
+
+const material = new THREE.MeshPhongMaterial({
+  map: earthTexture,
+  specularMap: specularTexture,
+  specular: new THREE.Color(0x333333),
+  shininess: 10,
+  emissive: new THREE.Color(0x003366),
+  emissiveIntensity: 0.1,
+});
+const globe = new THREE.Mesh(geometry, material);
+scene.add(globe);
+
+// --- 5. Awan ---
+const cloudGeometry = new THREE.SphereGeometry(globeRadius * 1.008, 64, 64);
+const cloudMaterial = new THREE.MeshPhongMaterial({
+  map: cloudTexture,
+  transparent: true,
+  opacity: 0.15,
+  blending: THREE.AdditiveBlending,
+  side: THREE.DoubleSide,
+});
+const clouds = new THREE.Mesh(cloudGeometry, cloudMaterial);
+scene.add(clouds);
+
+// --- 6. Wireframe (garis tipis) ---
+const wireframeMaterial = new THREE.MeshBasicMaterial({
+  color: 0x00aaff,
+  wireframe: true,
+  transparent: true,
+  opacity: 0.06,
+});
+const wireframeGlobe = new THREE.Mesh(
+  new THREE.SphereGeometry(globeRadius * 1.002, 32, 16),
+  wireframeMaterial
+);
+scene.add(wireframeGlobe);
+
+// --- 7. Lingkaran orbit (cincin) ---
+function createRing(radius, color, opacity = 0.15, thickness = 0.008) {
+  const geo = new THREE.RingGeometry(radius - thickness, radius + thickness, 80);
+  const mat = new THREE.MeshBasicMaterial({
+    color: color,
+    transparent: true,
+    opacity: opacity,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+  const ring = new THREE.Mesh(geo, mat);
+  ring.rotation.x = Math.PI / 2.2;
+  ring.rotation.z = 0.3;
+  return ring;
+}
+
+const ring1 = createRing(1.45, 0x00ccff, 0.08);
+scene.add(ring1);
+const ring2 = createRing(1.65, 0x4488ff, 0.05);
+ring2.rotation.x = Math.PI / 1.8;
+ring2.rotation.z = -0.5;
+scene.add(ring2);
+const ring3 = createRing(1.85, 0x00ff88, 0.03);
+ring3.rotation.x = Math.PI / 2.8;
+ring3.rotation.z = 0.8;
+scene.add(ring3);
+
+// --- 8. BINTANG (LATAR) ---
+const starsGeo = new THREE.BufferGeometry();
+const starsCount = 1200;
+const starsPos = new Float32Array(starsCount * 3);
+for (let i = 0; i < starsCount * 3; i++) {
+  starsPos[i] = (Math.random() - 0.5) * 80;
+}
+starsGeo.setAttribute('position', new THREE.BufferAttribute(starsPos, 3));
+const starsMat = new THREE.PointsMaterial({
+  color: 0x4488aa,
+  size: 0.025,
+  transparent: true,
+  opacity: 0.5,
+  blending: THREE.AdditiveBlending,
+});
+const stars = new THREE.Points(starsGeo, starsMat);
+scene.add(stars);
+
+// ================================================================
+// 🚀 ENGINE CORE — INTI CAHAYA BERDENYUT (IS-HF/IS-HS V3.0)
+// ================================================================
+
+// --- 9. Membuat tekstur glow untuk Sprite ---
+function createGlowTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+
+  // Radial gradient: putih di pusat → cyan terang → biru → transparan
+  const gradient = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+  gradient.addColorStop(0.0, 'rgba(255, 255, 255, 1)');   // Inti putih
+  gradient.addColorStop(0.15, 'rgba(180, 240, 255, 1)'); // Cyan sangat terang
+  gradient.addColorStop(0.4, 'rgba(0, 180, 255, 0.9)');  // Biru terang
+  gradient.addColorStop(0.7, 'rgba(0, 80, 255, 0.5)');   // Biru gelap
+  gradient.addColorStop(1.0, 'rgba(0, 0, 255, 0)');      // Transparan
+
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 256, 256);
+  return new THREE.CanvasTexture(canvas);
+}
+
+// --- 10. Sprite Glow (selalu menghadap kamera) ---
+const glowTexture = createGlowTexture();
+const glowMaterial = new THREE.SpriteMaterial({
+  map: glowTexture,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  transparent: true,
+  opacity: 0.95,
+});
+const coreGlow = new THREE.Sprite(glowMaterial);
+coreGlow.scale.set(1.6, 1.6, 1);
+scene.add(coreGlow);
+
+// --- 11. Bola fisik di pusat (inti mesin) ---
+const coreSphereGeo = new THREE.SphereGeometry(0.15, 24, 24);
+const coreSphereMat = new THREE.MeshBasicMaterial({
+  color: 0x88ddff,
+  emissive: 0x00aaff,
+  emissiveIntensity: 2.0,
+});
+const coreSphere = new THREE.Mesh(coreSphereGeo, coreSphereMat);
+scene.add(coreSphere);
+
+// --- 12. Lingkaran energi tambahan (cincin dalam) ---
+const innerRingGeo = new THREE.RingGeometry(0.25, 0.35, 48);
+const innerRingMat = new THREE.MeshBasicMaterial({
+  color: 0x00ccff,
+  transparent: true,
+  opacity: 0.3,
+  side: THREE.DoubleSide,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
+});
+const innerRing = new THREE.Mesh(innerRingGeo, innerRingMat);
+innerRing.rotation.x = Math.PI / 2;
+innerRing.rotation.z = 0.5;
+scene.add(innerRing);
+
+const innerRing2 = new THREE.RingGeometry(0.4, 0.5, 48);
+const innerRingMat2 = new THREE.MeshBasicMaterial({
+  color: 0x0088ff,
+  transparent: true,
+  opacity: 0.2,
+  side: THREE.DoubleSide,
+  depthWrite: false,
+  blending: THREE.AdditiveBlending,
+});
+const innerRing2Mesh = new THREE.Mesh(innerRing2, innerRingMat2);
+innerRing2Mesh.rotation.x = Math.PI / 3;
+innerRing2Mesh.rotation.y = 0.8;
+scene.add(innerRing2Mesh);
+
+// --- 13. Resize handler ---
+window.addEventListener('resize', () => {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+});
+
+// --- 14. Clock & UI update ---
+function updateClock() {
+  const now = new Date();
+  const local = now.toLocaleTimeString('id-ID', { hour12: false });
+  document.getElementById('localClock').textContent = local;
+  document.getElementById('utcClock').textContent = now.toUTCString().slice(17, 25) + ' UTC';
+  document.getElementById('epoch').textContent = Math.floor(now.getTime() / 1000);
+  const phase = ((now.getSeconds() / 60) * 360 + now.getMilliseconds() / 1000 * 6) % 360;
+  document.getElementById('phase').textContent = phase.toFixed(3) + '°';
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// --- 15. Animasi loop ---
+function animate() {
+  requestAnimationFrame(animate);
+
+  // Rotasi globe & awan
+  globe.rotation.y += 0.0006;
+  clouds.rotation.y += 0.0008;
+  wireframeGlobe.rotation.y += 0.0006;
+
+  // Rotasi cincin orbit
+  ring1.rotation.z += 0.0003;
+  ring2.rotation.x += 0.0002;
+  ring3.rotation.y += 0.0004;
+
+  // Rotasi bintang
+  stars.rotation.y += 0.00003;
+
+  // ============================================================
+  // 🔥 ANIMASI ENGINE CORE (Berdenyut)
+  // ============================================================
+  const time = Date.now() * 0.003; // ~2 detik per siklus
+  const pulse = 1 + 0.25 * Math.sin(time); // Skala 0.75 ↔ 1.25
+
+  // Glow membesar/mengecil
+  coreGlow.scale.set(1.6 * pulse, 1.6 * pulse, 1);
+
+  // Bola inti berdenyut
+  coreSphere.scale.set(pulse, pulse, pulse);
+
+  // Rotasi cincin dalam
+  innerRing.rotation.z += 0.02;
+  innerRing2Mesh.rotation.y += 0.015;
+  innerRing2Mesh.rotation.x += 0.01;
+
+  // Ubah intensitas emissive bola inti sedikit
+  const intensity = 1.5 + 0.8 * Math.sin(time * 1.2);
+  coreSphereMat.emissiveIntensity = Math.max(0.8, intensity);
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+// --- 16. Random telemetry ---
+setInterval(() => {
+  const sense = (97 + Math.random() * 2.5).toFixed(1);
+  const think = (96 + Math.random() * 3).toFixed(1);
+  const sync = (98 + Math.random() * 2).toFixed(1);
+  document.getElementById('sense').textContent = sense + '%';
+  document.getElementById('think').textContent = think + '%';
+  document.getElementById('sync').textContent = sync + '%';
+}, 3000);
+
+console.log('⚡ LOGOS GRAPHOS — Engine Core IS-HF/IS-HS V3.0 aktif');
+</script>
+</body>
+</html>
